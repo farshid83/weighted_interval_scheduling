@@ -1,0 +1,1 @@
+wis.d: ../wis.cpp
