@@ -19,24 +19,31 @@ public:
 	int finish;
 	double value;
 	int ivalue;
+	int max_compatible;
 	INTERVAL()
 	{
 		//srand(time(NULL));
-		start = rand() % 100;
-		finish = start + (rand() % 100);
+		int i = rand()%100, j = rand()%100;
+		if(i < j)
+		{
+			start = i;
+			finish = j;
+		}
+		else
+		{
+			finish = i;
+			start = j;
+		}
 		value = (double)(rand() % 100);// / 10.0;
 		ivalue = rand() % 10;
+		max_compatible = -1;
 	};
-	int max_compatible;
 };
-
-INTERVAL interval[size];
-int sorted [size];
 
 void PrintSeq(int* obj, int sz)
 {
 	for(int i = 0; i < sz; i++)
-		cout << obj[i] << " ";
+		cout << obj[i] << ":(" << i << ")  ";
 	cout << "\n";
 }
 
@@ -50,11 +57,11 @@ void PrintVal(INTERVAL* obj, int sz)
 void PrintComp(INTERVAL* obj, int sz)
 {
 	for(int i = 0; i < sz; i++)
-		cout << obj[i].max_compatible << " ";
+		cout << i << ":(" << obj[i].max_compatible << ")  ";
 	cout << "\n";
 }
 
-void merge_sort(INTERVAL* obj, int from, int to, int* sorted)
+void merge_sort(INTERVAL* obj, int prop_index, int from, int to, int* sorted)
 {
 	if(from == to)
 	{
@@ -66,8 +73,8 @@ void merge_sort(INTERVAL* obj, int from, int to, int* sorted)
 	{
 		//for i -> sorted[i] = i; ???
 		int mean = (from + to) / 2;
-		merge_sort(obj, from, mean, sorted);
-		merge_sort(obj, mean+1, to, sorted);
+		merge_sort(obj, prop_index, from, mean, sorted);
+		merge_sort(obj, prop_index, mean+1, to, sorted);
 		//combine(obj, from, mean, to);
 		//cout << from << " " << mean << " " << to << " \n";
 		int aux[to - from + 1];
@@ -76,8 +83,25 @@ void merge_sort(INTERVAL* obj, int from, int to, int* sorted)
 		{
 			if((i <= mean - from) && (j <= to - mean - 1))
 			{
-				//if(obj[sorted[from+i]].value <= obj[sorted[mean+1+j]].value)
-				if(obj[sorted[from+i]].finish <= obj[sorted[mean+1+j]].finish)
+				int iv1 = 0, iv2 = 0;
+				//int v1 = 0, v2 = 0;
+				if(prop_index == 1)
+				{
+					iv1 = obj[sorted[from+i]].start;
+					iv2 = obj[sorted[mean+1+j]].start;
+				}
+				else if(prop_index == 2)
+				{
+					iv1 = obj[sorted[from+i]].finish;
+					iv2 = obj[sorted[mean+1+j]].finish;
+				}
+				else if(prop_index == 3)
+				{
+					iv1 = obj[sorted[from+i]].ivalue;
+					iv2 = obj[sorted[mean+1+j]].ivalue;
+				}
+				//if(obj[sorted[from+i]].finish <= obj[sorted[mean+1+j]].finish)
+				if(iv1 <= iv2)
 				{
 					aux[i+j] = sorted[from+i];
 					i++;
@@ -107,15 +131,24 @@ void merge_sort(INTERVAL* obj, int from, int to, int* sorted)
 	}
 }
 
-int WIS(INTERVAL* interval, int* sorted, int sz)
+int wis[size]; // For memoize!!!
+int WIS(INTERVAL* interval, int* sorted, int sid) //sorted id
 {
-	if(sz == -1)
+	//cout << "wis[index] = " << wis[sid] << ", sid = " << sid << "\n";
+	if(wis[sid] != -1) // Memoization
+		return wis[sid];
+	if(sid < 0)
 		return 0.0;
 	else
 	{
-		double v1 = WIS(interval, sorted, sz-1);
-		double v2 = interval[sorted[sz-1]].value + WIS(interval, sorted, interval[sorted[sz-1]].max_compatible);
-		//cout << v1 << " " << v2 << " \n";
+		double v1 = WIS(interval, sorted, sid-1);
+		double v2 = interval[sorted[sid]].value
+				  + WIS(interval, sorted, interval[sorted[sid]].max_compatible);
+		//cout << "v1 = " << v1 << ", v2 = " << v2 << ", sid = " << sid << ", comp = " << interval[sorted[sid]].max_compatible << "\n";
+		//int i = 0;
+		//cin >> i;
+		if(sid > 0)
+			wis[sid] = (v1>v2)?v1:v2;
 		return (v1 > v2)?v1:v2;
 	}
 	//return 0.0;
@@ -124,8 +157,10 @@ int WIS(INTERVAL* interval, int* sorted, int sz)
 int main()
 {
 	srand(time(NULL));
+	INTERVAL interval[size];
+	int sorted [size];
 
-	merge_sort(interval,0,9,sorted);
+	merge_sort(interval,2,0,size-1,sorted);
 	PrintVal(interval,size);
 	PrintSeq(sorted,size);
 
@@ -135,11 +170,22 @@ int main()
 		for(int j = 0; j < i; j++)
 		{
 			if(interval[sorted[j]].finish <= interval[sorted[i]].start)
-				interval[sorted[i]].max_compatible = sorted[j];
+				interval[sorted[i]].max_compatible = j;
 		}
 	}
 	PrintComp(interval,size);
 
-	cout << WIS(interval,sorted,size) << " \n";
+	for(int i = 0; i < size; i++)
+		wis[i] = -1;
+	//cout << WIS(interval,sorted,size-1) << " \n";
+
+	for(int i = 0; i < size; i++)
+		cout << WIS(interval,sorted,i) << " \n";
+
 	return 0;
 }
+
+
+
+
+// O(nlog(n))
